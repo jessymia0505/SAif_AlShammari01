@@ -40,6 +40,25 @@ async function startServer() {
               client.send(broadcastData);
             }
           });
+
+          // Automatic bot response
+          setTimeout(() => {
+            const botMsg = {
+              id: Date.now() + 1,
+              user: "Verse Bot",
+              text: `Hello ${chatMsg.user}! I'm your learning assistant. How can I help you with your ${chatMsg.text.length > 20 ? 'request' : 'question'} today?`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            messages.push(botMsg);
+            if (messages.length > 50) messages.shift();
+            
+            const botBroadcastData = JSON.stringify({ type: "chat", data: botMsg });
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(botBroadcastData);
+              }
+            });
+          }, 1000);
         }
       } catch (err) {
         console.error("Error processing message:", err);

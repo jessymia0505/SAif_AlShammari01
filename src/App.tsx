@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   Menu,
   X,
-  BarChart3,
   CheckCircle,
   Info,
   HelpCircle,
@@ -23,27 +22,16 @@ import {
   ChevronRight,
   Send,
   Twitter,
-  ExternalLink
+  ExternalLink,
+  RotateCcw
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  Tooltip, 
-  ResponsiveContainer,
-  Cell
-} from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 
-const analyticsData = [
-  { name: 'Mon', visits: 12 },
-  { name: 'Tue', visits: 15 },
-  { name: 'Wed', visits: 14 },
-  { name: 'Thu', visits: 28 },
-  { name: 'Fri', visits: 12 },
-  { name: 'Sat', visits: 10 },
-  { name: 'Sun', visits: 24 },
-];
+interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
 
 interface Lesson {
   id: number;
@@ -52,6 +40,7 @@ interface Lesson {
   completed: boolean;
   content: string;
   codeSnippet: string;
+  quiz: QuizQuestion[];
 }
 
 interface Lessons {
@@ -66,9 +55,36 @@ const initialLessons: Lessons = {
       id: 1, 
       title: 'Introduction to Tags', 
       duration: '5 min', 
-      completed: true,
+      completed: false,
       content: 'HTML tags are the building blocks of web pages. They are used to create elements like headings, paragraphs, and links. Most tags have an opening tag like <p> and a closing tag like </p>.',
-      codeSnippet: '<h1>Hello World</h1>\n<p>This is a paragraph.</p>'
+      codeSnippet: '<h1>Hello World</h1>\n<p>This is a paragraph.</p>',
+      quiz: [
+        {
+          question: 'Which tag is used for the largest heading?',
+          options: ['<h6>', '<h1>', '<p>', '<div>'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What does HTML stand for?',
+          options: ['Hyper Text Markup Language', 'High Tech Modern Language', 'Hyper Tool Multi Language', 'Hyper Text Main Link'],
+          correctAnswer: 0
+        },
+        {
+          question: 'Which tag is used to create a line break?',
+          options: ['<lb>', '<break>', '<br>', '<hr>'],
+          correctAnswer: 2
+        },
+        {
+          question: 'Which tag is used to define an unordered list?',
+          options: ['<ol>', '<ul>', '<li>', '<list>'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What is the correct tag for a standard paragraph?',
+          options: ['<text>', '<para>', '<p>', '<div>'],
+          correctAnswer: 2
+        }
+      ]
     },
     { 
       id: 2, 
@@ -76,7 +92,34 @@ const initialLessons: Lessons = {
       duration: '8 min', 
       completed: false,
       content: 'Attributes provide additional information about elements. They are always specified in the start tag and usually come in name/value pairs like name="value". For example, the <a> tag uses the href attribute to specify a link.',
-      codeSnippet: '<a href="https://google.com">Click me</a>\n<img src="image.jpg" alt="Description">'
+      codeSnippet: '<a href="https://google.com">Click me</a>\n<img src="image.jpg" alt="Description">',
+      quiz: [
+        {
+          question: 'Which attribute is used to specify the link destination for an <a> tag?',
+          options: ['src', 'alt', 'href', 'link'],
+          correctAnswer: 2
+        },
+        {
+          question: 'Where are attributes always specified?',
+          options: ['In the end tag', 'In the start tag', 'In the middle of the content', 'In a separate CSS file'],
+          correctAnswer: 1
+        },
+        {
+          question: 'Which attribute provides alternative text for an image if it cannot be displayed?',
+          options: ['title', 'src', 'alt', 'text'],
+          correctAnswer: 2
+        },
+        {
+          question: 'What is the purpose of the "target" attribute in an <a> tag?',
+          options: ['To set the color', 'To specify where to open the link', 'To add a title', 'To link to a CSS file'],
+          correctAnswer: 1
+        },
+        {
+          question: 'Which attribute is used to uniquely identify an element in HTML?',
+          options: ['class', 'name', 'id', 'style'],
+          correctAnswer: 2
+        }
+      ]
     },
     { 
       id: 3, 
@@ -84,7 +127,34 @@ const initialLessons: Lessons = {
       duration: '12 min', 
       completed: false,
       content: 'Forms are used to collect user input. Common elements include <input>, <textarea>, <button>, and <select>. The <label> tag is used to define a label for an input element.',
-      codeSnippet: '<form>\n  <label>Name:</label>\n  <input type="text">\n  <button>Submit</button>\n</form>'
+      codeSnippet: '<form>\n  <label>Name:</label>\n  <input type="text">\n  <button>Submit</button>\n</form>',
+      quiz: [
+        {
+          question: 'Which tag is used to create a multi-line text input?',
+          options: ['<input type="text">', '<textarea>', '<label>', '<form>'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What is the purpose of the <label> tag?',
+          options: ['To create a button', 'To define a label for an input element', 'To group form elements', 'To submit the form'],
+          correctAnswer: 1
+        },
+        {
+          question: 'Which input type is used for a password field?',
+          options: ['type="text"', 'type="hidden"', 'type="password"', 'type="secure"'],
+          correctAnswer: 2
+        },
+        {
+          question: 'Which tag is used to create a dropdown list?',
+          options: ['<input>', '<select>', '<list>', '<dropdown>'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What attribute is used to group radio buttons together?',
+          options: ['id', 'class', 'name', 'value'],
+          correctAnswer: 2
+        }
+      ]
     },
   ],
   CSS: [
@@ -92,17 +162,71 @@ const initialLessons: Lessons = {
       id: 1, 
       title: 'Selectors & Specificity', 
       duration: '10 min', 
-      completed: true,
+      completed: false,
       content: 'CSS selectors are used to "find" (or select) the HTML elements you want to style. Specificity is the means by which browsers decide which CSS property values are the most relevant to an element.',
-      codeSnippet: 'h1 {\n  color: purple;\n  font-size: 24px;\n}\n\n.my-class {\n  background: black;\n}'
+      codeSnippet: 'h1 {\n  color: purple;\n  font-size: 24px;\n}\n\n.my-class {\n  background: black;\n}',
+      quiz: [
+        {
+          question: 'Which selector targets an element with a specific class?',
+          options: ['#id', '.class', 'element', '*'],
+          correctAnswer: 1
+        },
+        {
+          question: 'Which selector targets an element with a specific ID?',
+          options: ['.class', '#id', 'element', '::after'],
+          correctAnswer: 1
+        },
+        {
+          question: 'How do you select all <p> elements inside a <div>?',
+          options: ['div p', 'div + p', 'div > p', 'div.p'],
+          correctAnswer: 0
+        },
+        {
+          question: 'What is the specificity of an ID selector?',
+          options: ['0,0,1,0', '0,1,0,0', '1,0,0,0', '0,0,0,1'],
+          correctAnswer: 1
+        },
+        {
+          question: 'Which selector is used to style an element when the mouse is over it?',
+          options: [':active', ':focus', ':hover', ':visited'],
+          correctAnswer: 2
+        }
+      ]
     },
     { 
       id: 2, 
       title: 'Flexbox Mastery', 
       duration: '15 min', 
-      completed: true,
+      completed: false,
       content: 'Flexbox is a one-dimensional layout method for arranging items in rows or columns. It makes it easier to design flexible responsive layout structure without using float or positioning.',
-      codeSnippet: '.container {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}'
+      codeSnippet: '.container {\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}',
+      quiz: [
+        {
+          question: 'Which property is used to align items along the main axis in Flexbox?',
+          options: ['align-items', 'justify-content', 'flex-direction', 'display'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What is the default value of flex-direction?',
+          options: ['column', 'row-reverse', 'row', 'column-reverse'],
+          correctAnswer: 2
+        },
+        {
+          question: 'Which property allows items to wrap onto multiple lines?',
+          options: ['flex-wrap', 'flex-flow', 'display', 'align-content'],
+          correctAnswer: 0
+        },
+        {
+          question: 'How do you align items along the cross axis?',
+          options: ['justify-content', 'align-items', 'flex-wrap', 'align-self'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What does "flex-grow: 1" do?',
+          options: ['Makes the item shrink', 'Allows the item to grow and fill available space', 'Sets a fixed width', 'Hides the item'],
+          correctAnswer: 1
+        }
+      ]
     },
     { 
       id: 3, 
@@ -110,7 +234,34 @@ const initialLessons: Lessons = {
       duration: '20 min', 
       completed: false,
       content: 'CSS Grid Layout is a two-dimensional system, meaning it can handle both columns and rows. It is a powerful tool for creating complex web layouts.',
-      codeSnippet: '.grid-container {\n  display: grid;\n  grid-template-columns: 1fr 1fr 1fr;\n  gap: 10px;\n}'
+      codeSnippet: '.grid-container {\n  display: grid;\n  grid-template-columns: 1fr 1fr 1fr;\n  gap: 10px;\n}',
+      quiz: [
+        {
+          question: 'How do you define a grid with three equal columns?',
+          options: ['grid-template-columns: 100px 100px 100px;', 'grid-template-columns: 1fr 1fr 1fr;', 'display: flex;', 'grid-gap: 10px;'],
+          correctAnswer: 1
+        },
+        {
+          question: 'Which property defines the space between grid rows and columns?',
+          options: ['margin', 'padding', 'gap', 'border-spacing'],
+          correctAnswer: 2
+        },
+        {
+          question: 'What does "1fr" represent in CSS Grid?',
+          options: ['1 fixed row', '1 fraction of the available space', '1 font-relative unit', '1 fluid row'],
+          correctAnswer: 1
+        },
+        {
+          question: 'How do you make a grid item span two columns?',
+          options: ['grid-column: span 2;', 'grid-row: span 2;', 'column-span: 2;', 'grid-width: 2;'],
+          correctAnswer: 0
+        },
+        {
+          question: 'Which property is used to align grid items inside their cells?',
+          options: ['justify-items', 'align-content', 'grid-align', 'place-items'],
+          correctAnswer: 3
+        }
+      ]
     },
   ],
   JavaScript: [
@@ -118,9 +269,36 @@ const initialLessons: Lessons = {
       id: 1, 
       title: 'Variables & Data Types', 
       duration: '7 min', 
-      completed: true,
+      completed: false,
       content: 'Variables are containers for storing data values. JavaScript has several data types including strings, numbers, booleans, objects, and more. Use let or const to declare variables.',
-      codeSnippet: 'const name = "Verse";\nlet age = 25;\nconst isLearning = true;'
+      codeSnippet: 'const name = "Verse";\nlet age = 25;\nconst isLearning = true;',
+      quiz: [
+        {
+          question: 'Which keyword is used to declare a variable that cannot be reassigned?',
+          options: ['let', 'var', 'const', 'set'],
+          correctAnswer: 2
+        },
+        {
+          question: 'Which of these is NOT a primitive data type in JavaScript?',
+          options: ['String', 'Number', 'Boolean', 'Array'],
+          correctAnswer: 3
+        },
+        {
+          question: 'What is the result of typeof null?',
+          options: ['"null"', '"undefined"', '"object"', '"string"'],
+          correctAnswer: 2
+        },
+        {
+          question: 'Which keyword is used to declare a block-scoped variable that CAN be reassigned?',
+          options: ['var', 'let', 'const', 'block'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What is the value of an uninitialized variable?',
+          options: ['null', '0', 'undefined', 'false'],
+          correctAnswer: 2
+        }
+      ]
     },
     { 
       id: 2, 
@@ -128,7 +306,34 @@ const initialLessons: Lessons = {
       duration: '12 min', 
       completed: false,
       content: 'A function is a block of code designed to perform a particular task. Scope determines the accessibility of variables. Global scope variables are accessible everywhere, while local scope variables are only accessible within the function.',
-      codeSnippet: 'function greet(name) {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet("User"));'
+      codeSnippet: 'function greet(name) {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet("User"));',
+      quiz: [
+        {
+          question: 'What is the scope of a variable declared inside a function?',
+          options: ['Global', 'Local', 'Block', 'Universal'],
+          correctAnswer: 1
+        },
+        {
+          question: 'How do you call a function named "myFunction"?',
+          options: ['call myFunction()', 'myFunction()', 'execute myFunction', 'run myFunction'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What is an arrow function syntax?',
+          options: ['function => {}', '() => {}', '=> function()', 'arrow function()'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What is the "return" keyword used for?',
+          options: ['To stop the function', 'To return a value from the function', 'To print to the console', 'To call another function'],
+          correctAnswer: 1
+        },
+        {
+          question: 'Can a function be passed as an argument to another function?',
+          options: ['Yes', 'No', 'Only if it is an arrow function', 'Only in strict mode'],
+          correctAnswer: 0
+        }
+      ]
     },
     { 
       id: 3, 
@@ -136,36 +341,37 @@ const initialLessons: Lessons = {
       duration: '15 min', 
       completed: false,
       content: 'Async/await is a special syntax to work with promises in a more comfortable fashion. It makes asynchronous code look and behave a bit more like synchronous code.',
-      codeSnippet: 'async function fetchData() {\n  const response = await fetch("api/data");\n  const data = await response.json();\n  return data;\n}'
+      codeSnippet: 'async function fetchData() {\n  const response = await fetch("api/data");\n  const data = await response.json();\n  return data;\n}',
+      quiz: [
+        {
+          question: 'What does the "await" keyword do?',
+          options: ['Stops execution completely', 'Pauses execution until a promise resolves', 'Speeds up the code', 'Creates a new promise'],
+          correctAnswer: 1
+        },
+        {
+          question: 'Which keyword must be used before a function to use "await" inside it?',
+          options: ['promise', 'wait', 'async', 'defer'],
+          correctAnswer: 2
+        },
+        {
+          question: 'What does a function marked with "async" always return?',
+          options: ['A string', 'A boolean', 'A promise', 'An object'],
+          correctAnswer: 2
+        },
+        {
+          question: 'How do you handle errors in async/await?',
+          options: ['Using if/else', 'Using try/catch', 'Using error()', 'Using catch() on the function call'],
+          correctAnswer: 1
+        },
+        {
+          question: 'What is a Promise in JavaScript?',
+          options: ['A guarantee that code will run', 'An object representing the eventual completion of an async operation', 'A type of function', 'A way to declare variables'],
+          correctAnswer: 1
+        }
+      ]
     },
   ],
 };
-
-const StatCard = ({ icon: Icon, label, value, trend, isLive }: any) => (
-  <div className="bg-zinc-900 p-6 rounded-[2rem] border border-zinc-800 relative overflow-hidden">
-    <div className="flex justify-between items-start mb-4">
-      <div className="p-3 bg-purple-500/10 rounded-2xl border border-purple-500/20">
-        <Icon className="w-6 h-6 text-purple-400" />
-      </div>
-      {trend && (
-        <div className="bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-          <TrendingUp className="w-3 h-3" />
-          {trend}
-        </div>
-      )}
-      {isLive && (
-        <div className="flex items-center gap-1.5 text-[10px] font-bold text-purple-400 uppercase tracking-wider">
-          <Circle className="w-2 h-2 fill-purple-400 animate-pulse" />
-          Live
-        </div>
-      )}
-    </div>
-    <div className="space-y-1">
-      <h2 className="text-4xl font-bold text-white tracking-tight">{value}</h2>
-      <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{label}</p>
-    </div>
-  </div>
-);
 
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'info', onClose: () => void }) => (
   <motion.div
@@ -187,12 +393,52 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
 );
 
 export default function App() {
-  const [showAnalytics, setShowAnalytics] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof initialLessons | null>(null);
-  const [lessons, setLessons] = useState(initialLessons);
+  const [lessons, setLessons] = useState<Lessons>(() => {
+    const saved = localStorage.getItem('verse_learn_progress');
+    if (!saved) return initialLessons;
+    
+    try {
+      const parsed = JSON.parse(saved) as Lessons;
+      // Merge saved data with initialLessons
+      const merged: Lessons = { ...initialLessons };
+      (Object.keys(initialLessons) as (keyof Lessons)[]).forEach(category => {
+        merged[category] = initialLessons[category].map(initialLesson => {
+          // Force completed to false for all lessons to start at 0% as requested
+          return {
+            ...initialLesson,
+            completed: false
+          };
+        });
+      });
+      // Clear the saved progress in localStorage to ensure the reset persists
+      localStorage.removeItem('verse_learn_progress');
+      return merged;
+    } catch (e) {
+      return initialLessons;
+    }
+  });
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'info' } | null>(null);
   const [currentLesson, setCurrentLesson] = useState<{ category: keyof typeof initialLessons, lesson: Lesson } | null>(null);
   const [userCode, setUserCode] = useState('');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [score, setScore] = useState(0);
+  const [username, setUsername] = useState(() => localStorage.getItem('verse_learn_username') || 'You');
+  const [tempUsername, setTempUsername] = useState(username);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [leaderboard, setLeaderboard] = useState(() => {
+    const saved = localStorage.getItem('verse_learn_leaderboard');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Filter out mock entries if they exist
+      return parsed.filter((entry: any) => entry.name === username || entry.name === 'You');
+    }
+    return [
+      { name: username, score: 0, rank: 1 }
+    ];
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -207,6 +453,23 @@ export default function App() {
     difficulty: 'Intermediate'
   });
 
+  useEffect(() => {
+    localStorage.setItem('verse_learn_progress', JSON.stringify(lessons));
+    
+    // Update user score on leaderboard based on progress
+    const totalCompleted = Object.values(lessons).flat().filter((l: any) => l.completed).length;
+    const userScore = totalCompleted * 500;
+    
+    setLeaderboard((prev: any) => {
+      const newLeaderboard = prev.map((entry: any) => 
+        (entry.name === username || entry.name === 'You') ? { ...entry, name: username, score: userScore } : entry
+      );
+      
+      localStorage.setItem('verse_learn_leaderboard', JSON.stringify(newLeaderboard));
+      return newLeaderboard;
+    });
+  }, [lessons, username]);
+
   const showFeedback = (message: string, type: 'success' | 'info' = 'info') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -215,6 +478,10 @@ export default function App() {
   const startLesson = (category: keyof typeof initialLessons, lesson: Lesson) => {
     setCurrentLesson({ category, lesson });
     setUserCode(lesson.codeSnippet);
+    setCurrentQuestionIndex(0);
+    setSelectedOption(null);
+    setQuizSubmitted(false);
+    setScore(0);
     showFeedback(`Starting: ${lesson.title}`, 'success');
   };
 
@@ -259,9 +526,10 @@ export default function App() {
 
   // WebSocket setup
   useEffect(() => {
-    if (showChat && !socket) {
+    let ws: WebSocket | null = null;
+    if (showChat) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(`${protocol}//${window.location.host}`);
+      ws = new WebSocket(`${protocol}//${window.location.host}`);
       
       ws.onopen = () => console.log('Connected to chat');
       ws.onmessage = (event) => {
@@ -277,8 +545,8 @@ export default function App() {
     }
     
     return () => {
-      if (socket) {
-        socket.close();
+      if (ws) {
+        ws.close();
         setSocket(null);
       }
     };
@@ -286,7 +554,7 @@ export default function App() {
 
   const sendChatMessage = () => {
     if (socket && chatInput.trim()) {
-      socket.send(JSON.stringify({ type: 'chat', text: chatInput, user: 'Student' }));
+      socket.send(JSON.stringify({ type: 'chat', text: chatInput, user: username }));
       setChatInput('');
     }
   };
@@ -304,10 +572,11 @@ export default function App() {
         
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => setShowAnalytics(true)}
-            className="p-3 bg-zinc-900 rounded-xl text-purple-400 hover:bg-zinc-800 transition-all border border-zinc-800 group"
+            onClick={() => setShowLeaderboard(true)}
+            className="p-3 bg-zinc-900 rounded-xl text-yellow-500 hover:bg-zinc-800 transition-all border border-zinc-800 group"
+            title="Leaderboard"
           >
-            <BarChart3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <TrendingUp className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </button>
           <button 
             onClick={() => setShowMenu(true)}
@@ -330,16 +599,60 @@ export default function App() {
               <span className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest text-white backdrop-blur-sm">
                 Current Progress: {totalProgress}%
               </span>
-              <h1 className="text-4xl font-black text-white leading-tight">Master the Web <br/>Stack Today.</h1>
+              <h1 className="text-4xl font-black text-white leading-tight">
+                Welcome back, <span className="text-purple-200">{username}</span>. <br/>
+                Master the Web Stack.
+              </h1>
               <p className="text-purple-100 text-sm font-medium max-w-xs">Continue your journey through HTML, CSS, and JavaScript with interactive modules.</p>
-              <button 
-                onClick={resumeLearning}
-                className="bg-white text-purple-600 px-6 py-3 rounded-2xl font-bold text-sm hover:bg-purple-50 transition-all shadow-xl"
-              >
-                Resume Learning
-              </button>
+              <div className="flex flex-wrap gap-4">
+                <button 
+                  onClick={resumeLearning}
+                  className="bg-white text-purple-600 px-6 py-3 rounded-2xl font-bold text-sm hover:bg-purple-50 transition-all shadow-xl"
+                >
+                  Resume Learning
+                </button>
+                {username === 'You' && (
+                  <button 
+                    onClick={() => setShowSettings(true)}
+                    className="bg-yellow-500 text-black px-6 py-3 rounded-2xl font-bold text-sm hover:bg-yellow-400 transition-all shadow-xl flex items-center gap-2 animate-pulse"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Set Username
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowLeaderboard(true)}
+                  className="bg-purple-500/20 border border-purple-400/30 text-white px-6 py-3 rounded-2xl font-bold text-sm hover:bg-purple-500/30 transition-all backdrop-blur-sm flex items-center gap-2"
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  View Leaderboard
+                </button>
+              </div>
             </div>
             <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+          </motion.div>
+        </section>
+
+        {/* How to Learn Card */}
+        <section>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={() => setShowHelp(true)}
+            className="p-6 bg-zinc-900 rounded-[2rem] border border-zinc-800 hover:border-purple-500/50 transition-all cursor-pointer group flex items-center justify-between"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-purple-600/20 rounded-2xl flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">How to Learn</h3>
+                <p className="text-zinc-500 text-xs font-medium">New here? See how to master the stack.</p>
+              </div>
+            </div>
+            <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-500 group-hover:bg-purple-600 group-hover:text-white transition-all">
+              <ChevronRight className="w-5 h-5" />
+            </div>
           </motion.div>
         </section>
 
@@ -375,13 +688,22 @@ export default function App() {
                       {lang === 'CSS' && <Cpu className={`w-6 h-6 ${selectedCategory === lang ? 'text-white' : 'text-blue-500'}`} />}
                       {lang === 'JavaScript' && <Activity className={`w-6 h-6 ${selectedCategory === lang ? 'text-white' : 'text-yellow-400'}`} />}
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-black text-lg text-white">{lang}</h4>
                       <p className={`text-xs font-bold uppercase tracking-widest ${
                         selectedCategory === lang ? 'text-purple-100' : 'text-zinc-500'
                       }`}>
                         {lessons[lang].length} Modules • {calculateProgress(lang)}% Complete
                       </p>
+                      <div className="mt-2 w-full h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${calculateProgress(lang)}%` }}
+                          className={`h-full transition-all duration-1000 ${
+                            selectedCategory === lang ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'bg-purple-500'
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${
@@ -456,6 +778,10 @@ export default function App() {
               <Mail className="w-4 h-4 group-hover:scale-110 transition-transform" />
               <span className="text-xs font-bold uppercase tracking-widest">Contact us</span>
             </button>
+            <button onClick={() => setShowLeaderboard(true)} className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors group">
+              <TrendingUp className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold uppercase tracking-widest">Leaderboard</span>
+            </button>
           </div>
 
           <div className="text-center md:text-right">
@@ -508,25 +834,23 @@ export default function App() {
                     <Code2 className="w-5 h-5" />
                     <h3 className="text-sm font-black uppercase tracking-widest">Practice Coding</h3>
                   </div>
-                  <button 
-                    onClick={() => {
-                      toggleLesson(currentLesson.category, currentLesson.lesson.id);
-                      setCurrentLesson(null);
-                    }}
-                    className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-purple-500 transition-all"
-                  >
-                    Complete Lesson
-                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
                   <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-800 font-mono text-sm">
                     <div className="flex justify-between items-center mb-4">
-                      <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Editor</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Editor</span>
+                      </div>
                       <button 
-                        onClick={() => setUserCode(currentLesson.lesson.codeSnippet)}
-                        className="text-[10px] font-bold text-purple-500 hover:text-purple-400"
+                        onClick={() => {
+                          setUserCode(currentLesson.lesson.codeSnippet);
+                          showFeedback('Code reset to original', 'info');
+                        }}
+                        className="text-[10px] font-black uppercase tracking-widest bg-purple-500/10 border border-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-all active:scale-95 flex items-center gap-2"
                       >
+                        <RotateCcw className="w-3 h-3" />
                         Reset Code
                       </button>
                     </div>
@@ -539,6 +863,117 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Quiz Section */}
+              {currentLesson.lesson.quiz && currentLesson.lesson.quiz.length > 0 && (
+                <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 space-y-6">
+                  <div className="flex items-center justify-between text-purple-400">
+                    <div className="flex items-center gap-3">
+                      <HelpCircle className="w-5 h-5" />
+                      <h3 className="text-sm font-black uppercase tracking-widest">Quick Quiz</h3>
+                    </div>
+                    <span className="text-[10px] font-bold bg-purple-500/10 px-3 py-1 rounded-full uppercase tracking-widest border border-purple-500/20">
+                      Question {currentQuestionIndex + 1} of {currentLesson.lesson.quiz.length}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <p className="text-white font-bold text-lg">{currentLesson.lesson.quiz[currentQuestionIndex].question}</p>
+                    <div className="grid grid-cols-1 gap-3">
+                      {currentLesson.lesson.quiz[currentQuestionIndex].options.map((option, index) => (
+                        <button
+                          key={index}
+                          onClick={() => !quizSubmitted && setSelectedOption(index)}
+                          className={`p-4 rounded-2xl text-left text-sm font-bold transition-all border ${
+                            !quizSubmitted 
+                              ? (selectedOption === index 
+                                  ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20' 
+                                  : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700')
+                              : (index === currentLesson.lesson.quiz[currentQuestionIndex].correctAnswer
+                                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-lg shadow-emerald-500/10'
+                                  : (selectedOption === index 
+                                      ? 'bg-red-500/20 border-red-500 text-red-400 shadow-lg shadow-red-500/10'
+                                      : 'bg-zinc-950/50 border-zinc-900 text-zinc-600 opacity-50'))
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] text-zinc-500">
+                              {String.fromCharCode(65 + index)}
+                            </span>
+                            {option}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {!quizSubmitted ? (
+                      <button
+                        onClick={() => {
+                          if (selectedOption !== null) {
+                            setQuizSubmitted(true);
+                            if (selectedOption === currentLesson.lesson.quiz[currentQuestionIndex].correctAnswer) {
+                              setScore(prev => prev + 1);
+                              showFeedback('Correct answer!', 'success');
+                            } else {
+                              showFeedback('Incorrect, keep going!', 'info');
+                            }
+                          }
+                        }}
+                        disabled={selectedOption === null}
+                        className="w-full py-4 bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all shadow-lg shadow-purple-500/20"
+                      >
+                        Submit Answer
+                      </button>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className={`p-6 rounded-3xl text-center space-y-2 ${
+                          selectedOption === currentLesson.lesson.quiz[currentQuestionIndex].correctAnswer
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        }`}>
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                            {selectedOption === currentLesson.lesson.quiz[currentQuestionIndex].correctAnswer ? 'Correct!' : 'Incorrect'}
+                          </p>
+                          <p className="text-sm font-bold leading-relaxed">
+                            {selectedOption === currentLesson.lesson.quiz[currentQuestionIndex].correctAnswer 
+                              ? 'Great job! You got it right.' 
+                              : `The correct answer is: ${currentLesson.lesson.quiz[currentQuestionIndex].options[currentLesson.lesson.quiz[currentQuestionIndex].correctAnswer]}`}
+                          </p>
+                        </div>
+                        {currentQuestionIndex < currentLesson.lesson.quiz.length - 1 ? (
+                          <button
+                            onClick={() => {
+                              setCurrentQuestionIndex(prev => prev + 1);
+                              setSelectedOption(null);
+                              setQuizSubmitted(false);
+                            }}
+                            className="w-full py-4 bg-zinc-800 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-zinc-700 transition-all"
+                          >
+                            Next Question
+                          </button>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="p-6 bg-purple-500/10 border border-purple-500/20 rounded-2xl text-center">
+                              <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-1">Quiz Result</p>
+                              <p className="text-2xl font-black text-white">{score} / {currentLesson.lesson.quiz.length}</p>
+                              <p className="text-[10px] font-bold text-purple-400 mt-2">+{score * 100} XP EARNED</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                toggleLesson(currentLesson.category, currentLesson.lesson.id);
+                                setCurrentLesson(null);
+                              }}
+                              className="w-full py-4 bg-purple-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all shadow-lg shadow-purple-500/20"
+                            >
+                              Finish Lesson
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -562,6 +997,16 @@ export default function App() {
                 <button 
                   onClick={() => {
                     setShowMenu(false);
+                    setShowLeaderboard(true);
+                  }}
+                  className="w-full flex items-center gap-4 p-4 hover:bg-zinc-800 rounded-2xl transition-colors text-left"
+                >
+                  <TrendingUp className="w-5 h-5 text-yellow-500" />
+                  <span className="font-bold text-white">Leaderboard</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowMenu(false);
                     setShowSettings(true);
                   }}
                   className="w-full flex items-center gap-4 p-4 hover:bg-zinc-800 rounded-2xl transition-colors text-left"
@@ -577,7 +1022,7 @@ export default function App() {
                   className="w-full flex items-center gap-4 p-4 hover:bg-zinc-800 rounded-2xl transition-colors text-left"
                 >
                   <Info className="w-5 h-5 text-zinc-400" />
-                  <span className="font-bold text-white">Help & Support</span>
+                  <span className="font-bold text-white">How to Learn</span>
                 </button>
                 <button 
                   onClick={() => {
@@ -648,6 +1093,31 @@ export default function App() {
                 </div>
 
                 <div className="space-y-4">
+                  <div className="p-6 bg-purple-600/10 rounded-3xl border border-purple-500/20 space-y-4">
+                    <h3 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-widest">
+                      <BookOpen className="w-4 h-4 text-purple-500" />
+                      How to Learn
+                    </h3>
+                    <div className="space-y-3">
+                      {[
+                        { step: "1. Choose a Path", desc: "Select HTML, CSS, or JavaScript from the dashboard." },
+                        { step: "2. Read & Practice", desc: "Read the lesson and use the live editor to practice code." },
+                        { step: "3. Take the Quiz", desc: "Test your knowledge with quizzes to earn XP points." },
+                        { step: "4. Climb the Ranks", desc: "Earn enough XP to reach Grandmaster status!" }
+                      ].map((item, i) => (
+                        <div key={i} className="flex gap-3">
+                          <div className="w-5 h-5 rounded-full bg-purple-600/20 flex items-center justify-center text-[10px] font-black text-purple-500 shrink-0">
+                            {i + 1}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-zinc-200">{item.step}</p>
+                            <p className="text-[10px] text-zinc-500 leading-relaxed">{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="p-6 bg-zinc-950 rounded-3xl border border-zinc-800 space-y-4">
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-purple-500" />
@@ -795,10 +1265,10 @@ export default function App() {
                 {chatMessages.map((msg, i) => (
                   <div 
                     key={msg.id || i} 
-                    className={`flex flex-col ${msg.user === 'Student' ? 'items-end' : 'items-start'}`}
+                    className={`flex flex-col ${msg.user === username ? 'items-end' : 'items-start'}`}
                   >
                     <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${
-                      msg.user === 'Student' 
+                      msg.user === username 
                         ? 'bg-purple-600 text-white rounded-tr-none' 
                         : 'bg-zinc-800 text-zinc-200 rounded-tl-none'
                     }`}>
@@ -854,32 +1324,56 @@ export default function App() {
                 </button>
               </div>
               <div className="p-8 space-y-6">
-                {[
-                  { id: 'notifications', label: 'Push Notifications', icon: Bell },
-                  { id: 'hapticFeedback', label: 'Haptic Feedback', icon: Activity },
-                  { id: 'autoSave', label: 'Auto-Save Progress', icon: CheckCircle },
-                ].map((item) => (
-                  <div key={item.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-black rounded-xl border border-zinc-800">
-                        <item.icon className="w-5 h-5 text-purple-500" />
-                      </div>
-                      <span className="font-bold text-white">{item.label}</span>
-                    </div>
-                    <button 
-                      onClick={() => setSettings(prev => ({ ...prev, [item.id]: !prev[item.id as keyof typeof settings] }))}
-                      className={`w-12 h-6 rounded-full transition-colors relative ${settings[item.id as keyof typeof settings] ? 'bg-purple-600' : 'bg-zinc-800'}`}
-                    >
-                      <motion.div 
-                        animate={{ x: settings[item.id as keyof typeof settings] ? 26 : 4 }}
-                        className="absolute top-1 w-4 h-4 bg-white rounded-full"
-                      />
-                    </button>
+                {/* Profile Section */}
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Profile</h3>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400">Username</label>
+                    <input 
+                      type="text"
+                      value={tempUsername}
+                      onChange={(e) => setTempUsername(e.target.value)}
+                      placeholder="Enter your username"
+                      className="w-full bg-black border border-zinc-800 rounded-2xl py-3 px-4 text-sm text-white focus:outline-none focus:border-purple-500 transition-all"
+                    />
                   </div>
-                ))}
+                </div>
+
+                <div className="h-px bg-zinc-800" />
+
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Preferences</h3>
+                  {[
+                    { id: 'notifications', label: 'Push Notifications', icon: Bell },
+                    { id: 'hapticFeedback', label: 'Haptic Feedback', icon: Activity },
+                    { id: 'autoSave', label: 'Auto-Save Progress', icon: CheckCircle },
+                  ].map((item) => (
+                    <div key={item.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-black rounded-xl border border-zinc-800">
+                          <item.icon className="w-5 h-5 text-purple-500" />
+                        </div>
+                        <span className="font-bold text-white">{item.label}</span>
+                      </div>
+                      <button 
+                        onClick={() => setSettings(prev => ({ ...prev, [item.id]: !prev[item.id as keyof typeof settings] }))}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${settings[item.id as keyof typeof settings] ? 'bg-purple-600' : 'bg-zinc-800'}`}
+                      >
+                        <motion.div 
+                          animate={{ x: settings[item.id as keyof typeof settings] ? 26 : 4 }}
+                          className="absolute top-1 w-4 h-4 bg-white rounded-full"
+                        />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="pt-4">
                   <button 
                     onClick={() => {
+                      const finalUsername = tempUsername.trim() || 'You';
+                      setUsername(finalUsername);
+                      localStorage.setItem('verse_learn_username', finalUsername);
                       setShowSettings(false);
                       showFeedback('Settings saved!', 'success');
                     }}
@@ -896,100 +1390,92 @@ export default function App() {
 
       {/* More Menu */}
 
-      {/* Analytics Modal */}
+      {/* Leaderboard Modal */}
       <AnimatePresence>
-        {showAnalytics && (
+        {showLeaderboard && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center p-6"
+            onClick={() => setShowLeaderboard(false)}
           >
-            <div className="p-6 max-w-2xl mx-auto space-y-8 pb-20">
-              <div className="flex justify-between items-center">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-zinc-900 w-full max-w-md rounded-[2.5rem] border border-zinc-800 overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-8 border-b border-zinc-800 flex justify-between items-center bg-gradient-to-br from-purple-600/10 to-transparent">
                 <div className="flex items-center gap-3">
-                  <BarChart3 className="w-6 h-6 text-purple-500" />
-                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Analytics <span className="text-purple-500">Hub</span></h2>
+                  <div className="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center text-yellow-500">
+                    <TrendingUp className="w-6 h-6" />
+                  </div>
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter">Global <span className="text-purple-500">Leaderboard</span></h2>
                 </div>
                 <button 
-                  onClick={() => setShowAnalytics(false)}
-                  className="p-3 bg-zinc-900 rounded-2xl text-zinc-400 hover:text-white transition-colors border border-zinc-800"
+                  onClick={() => setShowLeaderboard(false)}
+                  className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 transition-all"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <StatCard 
-                  icon={TrendingUp} 
-                  label="Total Reach" 
-                  value="132" 
-                  trend="+12%" 
-                />
-                <StatCard 
-                  icon={Activity} 
-                  label="Active Nodes" 
-                  value="2" 
-                  isLive={true} 
-                />
-                <div className="md:col-span-2">
-                  <StatCard 
-                    icon={Layers} 
-                    label="Total Events" 
-                    value="5" 
-                  />
-                </div>
+              <div className="p-6 space-y-3">
+                {leaderboard.map((entry: any) => (
+                  <div 
+                    key={entry.name}
+                    className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
+                      entry.name === username
+                        ? 'bg-purple-600/10 border-purple-500/50 shadow-lg shadow-purple-500/5'
+                        : 'bg-zinc-950 border-zinc-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${
+                        entry.rank === 1 ? 'bg-yellow-500 text-black' :
+                        entry.rank === 2 ? 'bg-zinc-300 text-black' :
+                        entry.rank === 3 ? 'bg-orange-500 text-black' :
+                        'bg-zinc-800 text-zinc-500'
+                      }`}>
+                        {entry.rank}
+                      </div>
+                      <div>
+                        <p className={`font-bold text-sm ${entry.name === username ? 'text-purple-400' : 'text-white'}`}>
+                          {entry.name}
+                        </p>
+                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                          {entry.score >= 2000 ? 'Grandmaster' : entry.score >= 1000 ? 'Expert' : 'Novice'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-white">{entry.score.toLocaleString()}</p>
+                      <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">XP Points</p>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Chart */}
-              <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800">
-                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Weekly Engagement</h3>
-                  <span className="text-[10px] font-bold text-purple-500 bg-purple-500/10 px-2 py-1 rounded-lg">LIVE DATA</span>
-                </div>
-                
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={analyticsData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                      <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fill: '#52525B', fontSize: 10, fontWeight: 700 }}
-                        dy={10}
-                      />
-                      <Tooltip 
-                        cursor={{ fill: 'rgba(168, 85, 247, 0.1)' }}
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-zinc-950 text-white p-3 rounded-2xl shadow-2xl border border-purple-500/30">
-                                <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">{payload[0].payload.name}</p>
-                                <p className="text-sm font-black">visits : {payload[0].value}</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar 
-                        dataKey="visits" 
-                        radius={[6, 6, 6, 6]} 
-                        barSize={24}
-                      >
-                        {analyticsData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.name === 'Sun' ? '#A855F7' : '#27272A'} 
-                            className="transition-all duration-300 hover:fill-purple-400 cursor-pointer"
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="p-6 bg-zinc-950 border-t border-zinc-800 space-y-4">
+                {username === 'You' && (
+                  <button 
+                    onClick={() => {
+                      setShowLeaderboard(false);
+                      setShowSettings(true);
+                    }}
+                    className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-black rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-yellow-500/10 flex items-center justify-center gap-2"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Set Username to Save Progress
+                  </button>
+                )}
+                <p className="text-[10px] font-bold text-zinc-500 text-center uppercase tracking-[0.2em]">
+                  Complete more lessons to climb the ranks
+                </p>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
