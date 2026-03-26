@@ -7,7 +7,7 @@ import path from "path";
 async function startServer() {
   const app = express();
   const httpServer = createHttpServer(app);
-  const wss = new WebSocketServer({ server: httpServer });
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws-chat" });
   const PORT = 3000;
 
   // Store chat history (in-memory for this demo)

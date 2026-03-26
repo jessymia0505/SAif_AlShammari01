@@ -531,59 +531,71 @@ export default function App() {
   );
 
   // WebSocket setup - Always connected
-  useEffect(() => {
-    let ws: WebSocket | null = null;
-    
-    const connect = () => {
-      setSocketStatus('connecting');
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${protocol}//${window.location.host}`);
-      
-      ws.onopen = () => {
-        console.log('Connected to chat');
-        setSocketStatus('connected');
-        setSocket(ws);
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === 'history') {
-            setChatMessages(message.data);
-          } else if (message.type === 'chat') {
-            setChatMessages(prev => [...prev, message.data]);
-            // Increment unread count if chat is not open
-            if (!showChatRef.current) {
-              setUnreadCount(prev => prev + 1);
-            }
-          }
-        } catch (err) {
-          console.error('Error parsing message:', err);
-        }
-      };
-      
-      ws.onclose = () => {
-        setSocketStatus('disconnected');
-        setSocket(null);
-        // Try to reconnect after 5 seconds
-        setTimeout(connect, 5000);
-      };
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const connect = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
 
-      ws.onerror = (err) => {
-        console.error('WebSocket error:', err);
-        setSocketStatus('disconnected');
-        ws?.close();
-      };
+    setSocketStatus('connecting');
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws-chat`;
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      console.log('Connected to chat');
+      setSocketStatus('connected');
+      setSocket(ws);
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'history') {
+          setChatMessages(message.data);
+        } else if (message.type === 'chat') {
+          setChatMessages(prev => [...prev, message.data]);
+          // Increment unread count if chat is not open
+          if (!showChatRef.current) {
+            setUnreadCount(prev => prev + 1);
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing message:', err);
+      }
+    };
+    
+    ws.onclose = () => {
+      setSocketStatus('disconnected');
+      setSocket(null);
+      // Try to reconnect after 5 seconds
+      reconnectTimeoutRef.current = setTimeout(connect, 5000);
     };
 
-    connect();
+    ws.onerror = (err) => {
+      console.error('WebSocket error:', err);
+      setSocketStatus('disconnected');
+      ws.close();
+    };
+
+    return ws;
+  };
+
+  useEffect(() => {
+    const ws = connect();
     
     return () => {
       if (ws) {
+        ws.onclose = null; // Prevent auto-reconnect on unmount
         ws.close();
-        setSocket(null);
-        setSocketStatus('disconnected');
       }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      setSocket(null);
+      setSocketStatus('disconnected');
     };
   }, []);
 
@@ -1308,6 +1320,14 @@ export default function App() {
                         {socketStatus === 'connected' ? 'Online' : 
                          socketStatus === 'connecting' ? 'Connecting...' : 'Offline'}
                       </span>
+                      {socketStatus === 'disconnected' && (
+                        <button 
+                          onClick={() => connect()}
+                          className="text-[9px] font-black text-purple-500 hover:text-purple-400 uppercase tracking-widest ml-2 underline underline-offset-2"
+                        >
+                          Reconnect Now
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1320,8 +1340,36 @@ export default function App() {
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {chatMessages.length === 0 && (
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 relative">
+                {socketStatus === 'connecting' && (
+                  <div className="absolute inset-0 z-10 bg-zinc-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8 space-y-4">
+                    <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+                    <div>
+                      <p className="text-sm font-black text-white uppercase tracking-widest">Connecting to Support</p>
+                      <p className="text-[10px] text-zinc-500 mt-1">Establishing secure connection...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {socketStatus === 'disconnected' && (
+                  <div className="absolute inset-0 z-10 bg-zinc-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8 space-y-4">
+                    <div className="w-12 h-12 bg-red-500/20 rounded-2xl flex items-center justify-center text-red-500">
+                      <Activity className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-white uppercase tracking-widest">Connection Lost</p>
+                      <p className="text-[10px] text-zinc-500 mt-1">We're having trouble reaching the server.</p>
+                    </div>
+                    <button 
+                      onClick={() => connect()}
+                      className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                )}
+
+                {chatMessages.length === 0 && socketStatus === 'connected' && (
                   <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
                     <MessageSquare className="w-12 h-12 text-zinc-700" />
                     <p className="text-xs font-medium text-zinc-500 max-w-[200px]">
