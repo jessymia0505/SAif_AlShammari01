@@ -400,19 +400,19 @@ export default function App() {
     
     try {
       const parsed = JSON.parse(saved) as Lessons;
-      // Merge saved data with initialLessons
+      // Merge saved data with initialLessons to ensure new lessons are included
       const merged: Lessons = { ...initialLessons };
       (Object.keys(initialLessons) as (keyof Lessons)[]).forEach(category => {
-        merged[category] = initialLessons[category].map(initialLesson => {
-          // Force completed to false for all lessons to start at 0% as requested
-          return {
-            ...initialLesson,
-            completed: false
-          };
-        });
+        if (parsed[category]) {
+          merged[category] = initialLessons[category].map(initialLesson => {
+            const savedLesson = parsed[category].find(l => l.id === initialLesson.id);
+            return {
+              ...initialLesson,
+              completed: savedLesson ? savedLesson.completed : false
+            };
+          });
+        }
       });
-      // Clear the saved progress in localStorage to ensure the reset persists
-      localStorage.removeItem('verse_learn_progress');
       return merged;
     } catch (e) {
       return initialLessons;
@@ -1017,6 +1017,16 @@ export default function App() {
                 <button 
                   onClick={() => {
                     setShowMenu(false);
+                    setShowSettings(true);
+                  }}
+                  className="w-full flex items-center gap-4 p-4 bg-purple-600/10 hover:bg-purple-600/20 rounded-2xl transition-colors text-left border border-purple-500/20"
+                >
+                  <Activity className="w-5 h-5 text-purple-500" />
+                  <span className="font-bold text-white">View Progress</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowMenu(false);
                     setShowHelp(true);
                   }}
                   className="w-full flex items-center gap-4 p-4 hover:bg-zinc-800 rounded-2xl transition-colors text-left"
@@ -1103,7 +1113,8 @@ export default function App() {
                         { step: "1. Choose a Path", desc: "Select HTML, CSS, or JavaScript from the dashboard." },
                         { step: "2. Read & Practice", desc: "Read the lesson and use the live editor to practice code." },
                         { step: "3. Take the Quiz", desc: "Test your knowledge with quizzes to earn XP points." },
-                        { step: "4. Climb the Ranks", desc: "Earn enough XP to reach Grandmaster status!" }
+                        { step: "4. Track Progress", desc: "View your stats in the 'View Progress' menu or Settings." },
+                        { step: "5. Climb the Ranks", desc: "Earn enough XP to reach Grandmaster status!" }
                       ].map((item, i) => (
                         <div key={i} className="flex gap-3">
                           <div className="w-5 h-5 rounded-full bg-purple-600/20 flex items-center justify-center text-[10px] font-black text-purple-500 shrink-0">
@@ -1323,7 +1334,46 @@ export default function App() {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                {/* Progress Overview Section */}
+                <div className="p-6 bg-purple-600/10 rounded-3xl border border-purple-500/20 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em]">Your Progress</h3>
+                    <div className="px-2 py-1 bg-purple-600 rounded-lg text-[9px] font-black text-white uppercase">
+                      {totalProgress}% Total
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-2xl font-black text-white">{(Object.values(lessons).flat().filter((l: any) => l.completed).length * 500).toLocaleString()}</p>
+                      <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Total XP Points</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-2xl font-black text-white">{Object.values(lessons).flat().filter((l: any) => l.completed).length}</p>
+                      <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Lessons Completed</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    {(['HTML', 'CSS', 'JavaScript'] as const).map(lang => (
+                      <div key={lang} className="space-y-1.5">
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+                          <span className="text-zinc-400">{lang}</span>
+                          <span className="text-white">{calculateProgress(lang)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${calculateProgress(lang)}%` }}
+                            className="h-full bg-purple-500"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Profile Section */}
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Profile</h3>
@@ -1337,6 +1387,31 @@ export default function App() {
                       className="w-full bg-black border border-zinc-800 rounded-2xl py-3 px-4 text-sm text-white focus:outline-none focus:border-purple-500 transition-all"
                     />
                   </div>
+                </div>
+
+                <div className="h-px bg-zinc-800" />
+
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Data & Sync</h3>
+                  <button 
+                    onClick={() => {
+                      localStorage.setItem('verse_learn_progress', JSON.stringify(lessons));
+                      localStorage.setItem('verse_learn_username', username);
+                      showFeedback('Progress saved successfully!', 'success');
+                    }}
+                    className="w-full flex items-center justify-between p-4 bg-purple-600/10 border border-purple-500/20 rounded-2xl hover:bg-purple-600/20 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-600/20 rounded-lg">
+                        <CheckCircle2 className="w-4 h-4 text-purple-500" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-white text-sm">Save Progress</p>
+                        <p className="text-[10px] text-zinc-500">Manual backup to local storage</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:translate-x-1 transition-transform" />
+                  </button>
                 </div>
 
                 <div className="h-px bg-zinc-800" />
