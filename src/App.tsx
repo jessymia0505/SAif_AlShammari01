@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Activity, 
   Layers, 
@@ -443,10 +443,15 @@ export default function App() {
   const [showMenu, setShowMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const showChatRef = useRef(showChat);
+  useEffect(() => {
+    showChatRef.current = showChat;
+  }, [showChat]);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [socketStatus, setSocketStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+  const [unreadCount, setUnreadCount] = useState(0);
   const [settings, setSettings] = useState({
     notifications: true,
     hapticFeedback: true,
@@ -525,10 +530,11 @@ export default function App() {
     (Object.values(lessons).flat() as Lesson[]).length) * 100
   );
 
-  // WebSocket setup
+  // WebSocket setup - Always connected
   useEffect(() => {
     let ws: WebSocket | null = null;
-    if (showChat) {
+    
+    const connect = () => {
       setSocketStatus('connecting');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${protocol}//${window.location.host}`);
@@ -546,6 +552,10 @@ export default function App() {
             setChatMessages(message.data);
           } else if (message.type === 'chat') {
             setChatMessages(prev => [...prev, message.data]);
+            // Increment unread count if chat is not open
+            if (!showChatRef.current) {
+              setUnreadCount(prev => prev + 1);
+            }
           }
         } catch (err) {
           console.error('Error parsing message:', err);
@@ -555,13 +565,18 @@ export default function App() {
       ws.onclose = () => {
         setSocketStatus('disconnected');
         setSocket(null);
+        // Try to reconnect after 5 seconds
+        setTimeout(connect, 5000);
       };
 
       ws.onerror = (err) => {
         console.error('WebSocket error:', err);
         setSocketStatus('disconnected');
+        ws?.close();
       };
-    }
+    };
+
+    connect();
     
     return () => {
       if (ws) {
@@ -570,6 +585,13 @@ export default function App() {
         setSocketStatus('disconnected');
       }
     };
+  }, []);
+
+  // Reset unread count when chat is opened
+  useEffect(() => {
+    if (showChat) {
+      setUnreadCount(0);
+    }
   }, [showChat]);
 
   const sendChatMessage = () => {
@@ -1601,6 +1623,38 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* Floating Chat Button */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setShowChat(true)}
+        className="fixed bottom-6 right-6 w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl shadow-purple-600/40 z-40 border-4 border-black group"
+      >
+        <MessageSquare className="w-7 h-7 group-hover:rotate-12 transition-transform" />
+        
+        {/* Unread Badge */}
+        <AnimatePresence>
+          {unreadCount > 0 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-black"
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Online Status Dot */}
+        <div className={`absolute bottom-1 right-1 w-3 h-3 rounded-full border-2 border-black ${
+          socketStatus === 'connected' ? 'bg-emerald-500' : 
+          socketStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+        }`} />
+      </motion.button>
     </div>
   );
 }
