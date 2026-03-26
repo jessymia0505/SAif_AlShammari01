@@ -541,7 +541,7 @@ export default function App() {
             <TrendingUp className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </button>
           <button 
-            onClick={() => window.open('https://analytics.vgdh.io/share/s-aif-al-shammari01.vercel.app', '_blank')}
+            onClick={() => window.open('https://analytics.vgdh.io/share/saifalshammari01.vercel.app', '_blank')}
             className="p-3 bg-zinc-900 rounded-xl text-emerald-500 hover:bg-zinc-800 transition-all border border-zinc-800 group"
             title="View Analytics"
           >
@@ -976,7 +976,7 @@ export default function App() {
                 <button 
                   onClick={() => {
                     setShowMenu(false);
-                    window.open('https://analytics.vgdh.io/share/s-aif-al-shammari01.vercel.app', '_blank');
+                    window.open('https://analytics.vgdh.io/share/saifalshammari01.vercel.app', '_blank');
                   }}
                   className="w-full flex items-center gap-4 p-4 hover:bg-zinc-800 rounded-2xl transition-colors text-left"
                 >
@@ -1292,7 +1292,7 @@ export default function App() {
 
                   <button 
                     onClick={() => {
-                      window.open('https://analytics.vgdh.io/share/s-aif-al-shammari01.vercel.app', '_blank');
+                      window.open('https://analytics.vgdh.io/share/saifalshammari01.vercel.app', '_blank');
                     }}
                     className="w-full flex items-center justify-between p-4 bg-emerald-600/10 border border-emerald-500/20 rounded-2xl hover:bg-emerald-600/20 transition-all group"
                   >
