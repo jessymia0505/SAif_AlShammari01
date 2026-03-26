@@ -443,16 +443,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [showChat, setShowChat] = useState(false);
-  const showChatRef = useRef(showChat);
-  useEffect(() => {
-    showChatRef.current = showChat;
-  }, [showChat]);
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [socketStatus, setSocketStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
-  const [unreadCount, setUnreadCount] = useState(0);
   const [settings, setSettings] = useState({
     notifications: true,
     hapticFeedback: true,
@@ -530,94 +520,6 @@ export default function App() {
     ((Object.values(lessons).flat() as Lesson[]).filter(l => l.completed).length / 
     (Object.values(lessons).flat() as Lesson[]).length) * 100
   );
-
-  // WebSocket setup - Always connected
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const connect = () => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    setSocketStatus('connecting');
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws-chat`;
-    const ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      console.log('Connected to chat');
-      setSocketStatus('connected');
-      setSocket(ws);
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'history') {
-          setChatMessages(message.data);
-        } else if (message.type === 'chat') {
-          setChatMessages(prev => [...prev, message.data]);
-          // Increment unread count if chat is not open
-          if (!showChatRef.current) {
-            setUnreadCount(prev => prev + 1);
-          }
-        }
-      } catch (err) {
-        console.error('Error parsing message:', err);
-      }
-    };
-    
-    ws.onclose = () => {
-      setSocketStatus('disconnected');
-      setSocket(null);
-      // Try to reconnect after 5 seconds
-      reconnectTimeoutRef.current = setTimeout(connect, 5000);
-    };
-
-    ws.onerror = (err) => {
-      console.error('WebSocket error:', err);
-      setSocketStatus('disconnected');
-      ws.close();
-    };
-
-    return ws;
-  };
-
-  useEffect(() => {
-    const ws = connect();
-    
-    return () => {
-      if (ws) {
-        ws.onclose = null; // Prevent auto-reconnect on unmount
-        ws.close();
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      setSocket(null);
-      setSocketStatus('disconnected');
-    };
-  }, []);
-
-  // Reset unread count when chat is opened
-  useEffect(() => {
-    if (showChat) {
-      setUnreadCount(0);
-    }
-  }, [showChat]);
-
-  const sendChatMessage = () => {
-    if (socket && socket.readyState === WebSocket.OPEN && chatInput.trim()) {
-      socket.send(JSON.stringify({ type: 'chat', text: chatInput, user: username }));
-      setChatInput('');
-    } else if (chatInput.trim()) {
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        showFeedback('Chat not connected. Reconnecting...', 'info');
-        // If disconnected, try to reconnect by toggling showChat briefly or just wait for useEffect
-      }
-    }
-  };
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-purple-500/30">
@@ -1228,23 +1130,12 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <a 
                       href="mailto:ameliahannah293@gmail.com"
-                      className="p-6 bg-zinc-950 rounded-3xl border border-zinc-800 hover:bg-zinc-800 transition-all text-left group block"
+                      className="p-6 bg-zinc-950 rounded-3xl border border-zinc-800 hover:bg-zinc-800 transition-all text-left group block w-full"
                     >
                       <Mail className="w-5 h-5 text-purple-500 mb-3 group-hover:scale-110 transition-transform" />
                       <p className="text-xs font-bold text-white">Email Support</p>
                       <p className="text-[10px] text-zinc-500 mt-1">ameliahannah293@gmail.com</p>
                     </a>
-                    <button 
-                      onClick={() => {
-                        setShowHelp(false);
-                        setShowChat(true);
-                      }}
-                      className="p-6 bg-zinc-950 rounded-3xl border border-zinc-800 hover:bg-zinc-800 transition-all text-left group"
-                    >
-                      <MessageSquare className="w-5 h-5 text-purple-500 mb-3 group-hover:scale-110 transition-transform" />
-                      <p className="text-xs font-bold text-white">Live Chat</p>
-                      <p className="text-[10px] text-zinc-500 mt-1">Available 9am - 5pm</p>
-                    </button>
                   </div>
 
                   <div className="pt-6 border-t border-zinc-800">
@@ -1295,144 +1186,6 @@ export default function App() {
                 >
                   Got it, thanks!
                 </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Live Chat Modal */}
-      <AnimatePresence>
-        {showChat && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-6"
-            onClick={() => setShowChat(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-zinc-900 w-full max-w-lg h-[600px] rounded-[2.5rem] border border-zinc-800 overflow-hidden shadow-2xl flex flex-col"
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Chat Header */}
-              <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-500">
-                    <MessageSquare className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-black text-white">Live Support</h2>
-                    <div className="flex items-center gap-1.5">
-                      <div className={`w-1.5 h-1.5 rounded-full ${
-                        socketStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 
-                        socketStatus === 'connecting' ? 'bg-yellow-500 animate-bounce' : 'bg-red-500'
-                      }`} />
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${
-                        socketStatus === 'connected' ? 'text-emerald-500' : 
-                        socketStatus === 'connecting' ? 'text-yellow-500' : 'text-red-500'
-                      }`}>
-                        {socketStatus === 'connected' ? 'Online' : 
-                         socketStatus === 'connecting' ? 'Connecting...' : 'Offline'}
-                      </span>
-                      {socketStatus === 'disconnected' && (
-                        <button 
-                          onClick={() => connect()}
-                          className="text-[9px] font-black text-purple-500 hover:text-purple-400 uppercase tracking-widest ml-2 underline underline-offset-2"
-                        >
-                          Reconnect Now
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowChat(false)}
-                  className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 relative">
-                {socketStatus === 'connecting' && (
-                  <div className="absolute inset-0 z-10 bg-zinc-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8 space-y-4">
-                    <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-                    <div>
-                      <p className="text-sm font-black text-white uppercase tracking-widest">Connecting to Support</p>
-                      <p className="text-[10px] text-zinc-500 mt-1">Establishing secure connection...</p>
-                    </div>
-                  </div>
-                )}
-                
-                {socketStatus === 'disconnected' && (
-                  <div className="absolute inset-0 z-10 bg-zinc-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8 space-y-4">
-                    <div className="w-12 h-12 bg-red-500/20 rounded-2xl flex items-center justify-center text-red-500">
-                      <Activity className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-white uppercase tracking-widest">Connection Lost</p>
-                      <p className="text-[10px] text-zinc-500 mt-1">We're having trouble reaching the server.</p>
-                    </div>
-                    <button 
-                      onClick={() => connect()}
-                      className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                )}
-
-                {chatMessages.length === 0 && socketStatus === 'connected' && (
-                  <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50">
-                    <MessageSquare className="w-12 h-12 text-zinc-700" />
-                    <p className="text-xs font-medium text-zinc-500 max-w-[200px]">
-                      Start a conversation with our support team or other students.
-                    </p>
-                  </div>
-                )}
-                {chatMessages.map((msg, i) => (
-                  <div 
-                    key={msg.id || i} 
-                    className={`flex flex-col ${msg.user === username ? 'items-end' : 'items-start'}`}
-                  >
-                    <div className={`max-w-[80%] p-4 rounded-2xl text-sm ${
-                      msg.user === username 
-                        ? 'bg-purple-600 text-white rounded-tr-none' 
-                        : 'bg-zinc-800 text-zinc-200 rounded-tl-none'
-                    }`}>
-                      <p className="font-bold text-[10px] mb-1 opacity-70 uppercase tracking-widest">{msg.user}</p>
-                      <p className="leading-relaxed">{msg.text}</p>
-                      <p className="text-[9px] mt-2 opacity-50 text-right">{msg.timestamp}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Chat Input */}
-              <div className="p-6 bg-zinc-950 border-t border-zinc-800">
-                <div className="relative flex items-center">
-                  <input 
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                    placeholder={socketStatus === 'connected' ? "Type your message..." : "Connecting to chat..."}
-                    disabled={socketStatus !== 'connected'}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-6 pr-14 text-sm text-white focus:outline-none focus:border-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                  <button 
-                    onClick={sendChatMessage}
-                    disabled={socketStatus !== 'connected' || !chatInput.trim()}
-                    className="absolute right-2 p-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:grayscale"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -1707,38 +1460,6 @@ export default function App() {
           />
         )}
       </AnimatePresence>
-
-      {/* Floating Chat Button */}
-      <motion.button
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setShowChat(true)}
-        className="fixed bottom-6 right-6 w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl shadow-purple-600/40 z-40 border-4 border-black group"
-      >
-        <MessageSquare className="w-7 h-7 group-hover:rotate-12 transition-transform" />
-        
-        {/* Unread Badge */}
-        <AnimatePresence>
-          {unreadCount > 0 && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-black"
-            >
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Online Status Dot */}
-        <div className={`absolute bottom-1 right-1 w-3 h-3 rounded-full border-2 border-black ${
-          socketStatus === 'connected' ? 'bg-emerald-500' : 
-          socketStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
-        }`} />
-      </motion.button>
     </div>
   );
 }
