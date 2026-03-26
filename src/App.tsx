@@ -446,6 +446,7 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [socketStatus, setSocketStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
   const [settings, setSettings] = useState({
     notifications: true,
     hapticFeedback: true,
@@ -528,34 +529,58 @@ export default function App() {
   useEffect(() => {
     let ws: WebSocket | null = null;
     if (showChat) {
+      setSocketStatus('connecting');
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${protocol}//${window.location.host}`);
       
-      ws.onopen = () => console.log('Connected to chat');
+      ws.onopen = () => {
+        console.log('Connected to chat');
+        setSocketStatus('connected');
+        setSocket(ws);
+      };
+      
       ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'history') {
-          setChatMessages(message.data);
-        } else if (message.type === 'chat') {
-          setChatMessages(prev => [...prev, message.data]);
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'history') {
+            setChatMessages(message.data);
+          } else if (message.type === 'chat') {
+            setChatMessages(prev => [...prev, message.data]);
+          }
+        } catch (err) {
+          console.error('Error parsing message:', err);
         }
       };
-      ws.onclose = () => setSocket(null);
-      setSocket(ws);
+      
+      ws.onclose = () => {
+        setSocketStatus('disconnected');
+        setSocket(null);
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        setSocketStatus('disconnected');
+      };
     }
     
     return () => {
       if (ws) {
         ws.close();
         setSocket(null);
+        setSocketStatus('disconnected');
       }
     };
   }, [showChat]);
 
   const sendChatMessage = () => {
-    if (socket && chatInput.trim()) {
+    if (socket && socket.readyState === WebSocket.OPEN && chatInput.trim()) {
       socket.send(JSON.stringify({ type: 'chat', text: chatInput, user: username }));
       setChatInput('');
+    } else if (chatInput.trim()) {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        showFeedback('Chat not connected. Reconnecting...', 'info');
+        // If disconnected, try to reconnect by toggling showChat briefly or just wait for useEffect
+      }
     }
   };
 
@@ -1250,8 +1275,17 @@ export default function App() {
                   <div>
                     <h2 className="text-lg font-black text-white">Live Support</h2>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                      <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Online</span>
+                      <div className={`w-1.5 h-1.5 rounded-full ${
+                        socketStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 
+                        socketStatus === 'connecting' ? 'bg-yellow-500 animate-bounce' : 'bg-red-500'
+                      }`} />
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${
+                        socketStatus === 'connected' ? 'text-emerald-500' : 
+                        socketStatus === 'connecting' ? 'text-yellow-500' : 'text-red-500'
+                      }`}>
+                        {socketStatus === 'connected' ? 'Online' : 
+                         socketStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1298,13 +1332,15 @@ export default function App() {
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
-                    placeholder="Type your message..."
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-6 pr-14 text-sm text-white focus:outline-none focus:border-purple-500 transition-all"
+                    onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                    placeholder={socketStatus === 'connected' ? "Type your message..." : "Connecting to chat..."}
+                    disabled={socketStatus !== 'connected'}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-4 pl-6 pr-14 text-sm text-white focus:outline-none focus:border-purple-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <button 
                     onClick={sendChatMessage}
-                    className="absolute right-2 p-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition-all shadow-lg shadow-purple-500/20"
+                    disabled={socketStatus !== 'connected' || !chatInput.trim()}
+                    className="absolute right-2 p-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 disabled:grayscale"
                   >
                     <Send className="w-4 h-4" />
                   </button>
