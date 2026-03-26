@@ -23,7 +23,8 @@ import {
   Send,
   Twitter,
   ExternalLink,
-  RotateCcw
+  RotateCcw,
+  BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -638,6 +639,13 @@ export default function App() {
             <TrendingUp className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </button>
           <button 
+            onClick={() => window.open('https://analytics.vgdh.io/share/s-aif-al-shammari01.vercel.app', '_blank')}
+            className="p-3 bg-zinc-900 rounded-xl text-emerald-500 hover:bg-zinc-800 transition-all border border-zinc-800 group"
+            title="View Analytics"
+          >
+            <BarChart3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </button>
+          <button 
             onClick={() => setShowMenu(true)}
             className="p-3 bg-zinc-900 rounded-xl text-zinc-400 hover:bg-zinc-800 transition-all border border-zinc-800"
           >
@@ -1062,6 +1070,16 @@ export default function App() {
                 >
                   <TrendingUp className="w-5 h-5 text-yellow-500" />
                   <span className="font-bold text-white">Leaderboard</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowMenu(false);
+                    window.open('https://analytics.vgdh.io/share/s-aif-al-shammari01.vercel.app', '_blank');
+                  }}
+                  className="w-full flex items-center gap-4 p-4 hover:bg-zinc-800 rounded-2xl transition-colors text-left"
+                >
+                  <BarChart3 className="w-5 h-5 text-emerald-500" />
+                  <span className="font-bold text-white">View Analytics</span>
                 </button>
                 <button 
                   onClick={() => {
@@ -1517,6 +1535,24 @@ export default function App() {
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:translate-x-1 transition-transform" />
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      window.open('https://analytics.vgdh.io/share/s-aif-al-shammari01.vercel.app', '_blank');
+                    }}
+                    className="w-full flex items-center justify-between p-4 bg-emerald-600/10 border border-emerald-500/20 rounded-2xl hover:bg-emerald-600/20 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-600/20 rounded-lg">
+                        <BarChart3 className="w-4 h-4 text-emerald-500" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-white text-sm">View Analytics</p>
+                        <p className="text-[10px] text-zinc-500">Open public dashboard</p>
+                      </div>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-zinc-500 group-hover:translate-x-1 transition-transform" />
                   </button>
                 </div>
 
